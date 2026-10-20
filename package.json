@@ -13,7 +13,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:setup": "tsx src/database/setup.ts",
+    "db:verify": "tsx src/database/verify.ts"
   },
   "repository": {
     "type": "git",

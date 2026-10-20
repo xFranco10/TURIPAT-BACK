@@ -38,13 +38,18 @@ export const getDatabaseState = (): DatabaseState => {
   }
 };
 
+let closing = false;
+
 export const connectDatabase = async (): Promise<void> => {
   mongoose.connection.on('connected', () => {
     logger.info('MongoDB conectada', { database: mongoose.connection.name });
   });
 
   mongoose.connection.on('disconnected', () => {
-    logger.warn('MongoDB desconectada');
+    // Un cierre pedido por la aplicación no es una anomalía: no se reporta como advertencia.
+    if (!closing) {
+      logger.warn('MongoDB desconectada');
+    }
   });
 
   mongoose.connection.on('error', (error: unknown) => {
@@ -65,6 +70,7 @@ export const connectDatabase = async (): Promise<void> => {
 };
 
 export const disconnectDatabase = async (): Promise<void> => {
+  closing = true;
   await mongoose.disconnect();
   logger.info('Conexión a MongoDB cerrada');
 };
