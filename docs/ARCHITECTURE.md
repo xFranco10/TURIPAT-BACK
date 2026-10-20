@@ -102,9 +102,9 @@ TURIPAT-BACK/
 ```ts
 /**
  * @openapi
- * /comercios/{id}:
+ * /merchants/{id}:
  *   get:
- *     tags: [Comercios]
+ *     tags: [Merchants]
  *     summary: Obtiene un comercio por id
  *     parameters:
  *       - in: path
@@ -131,8 +131,8 @@ TURIPAT-BACK/
 
 1. Conexión a MongoDB con Mongoose (`config/database.ts`) y modelos por módulo; índice `2dsphere` en la ubicación de los comercios.
 2. `auth`: registro/login con bcrypt + JWT, middleware `authenticate` y `authorize(roles)` en `common/middlewares/`.
-3. `comercios` (con validación de NIT módulo 11, QR) y `promociones`.
-4. `itinerarios` + `motor-ia` (TSP asíncrono, equidad de comercios, afluencia).
+3. `merchants` (con validación de NIT módulo 11, QR) y `promotions`.
+4. `itineraries` + `ai-engine` (TSP asíncrono, equidad de comercios, afluencia).
 5. `checkins` y analíticas anónimas.
 
 ## 8. Decisiones tomadas

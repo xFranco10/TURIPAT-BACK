@@ -17,12 +17,24 @@ export const swaggerSpec = swaggerJsdoc({
       description: 'API REST del Ecosistema Inteligente para Turismo Patrimonial.',
     },
     servers: [{ url: env.API_PREFIX, description: 'API base' }],
-    tags: [{ name: 'Health', description: 'Estado del servicio' }],
+    tags: [
+      { name: 'Health', description: 'Estado del servicio' },
+      { name: 'Examples', description: 'Módulo didáctico de referencia para crear nuevos endpoints' },
+    ],
     components: {
       securitySchemes: {
         bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
       },
       schemas: {
+        Example: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: '3f1a7c9e-...' },
+            name: { type: 'string', example: 'Ciudadela histórica' },
+            description: { type: 'string', nullable: true, example: 'Centro histórico' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
         ErrorResponse: {
           type: 'object',
           properties: {

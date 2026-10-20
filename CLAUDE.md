@@ -10,7 +10,7 @@ Actores: **Turista** (visitante sin registro u opcionalmente autenticado), **Com
 
 ### Estado actual
 
-- Esqueleto inicial. **Sin base de datos y sin datos mock.** Solo existe el módulo de referencia `health`.
+- Esqueleto inicial. **Sin base de datos y sin datos mock.** Solo existen `health` (referencia) y `example` (plantilla didáctica de CRUD con validación, errores y tests; puede borrarse al empezar los módulos reales).
 - Base de datos futura: **MongoDB** (con Mongoose). No instales ni conectes nada de BD hasta que se pida.
 - Los módulos de dominio aún no existen como carpetas; se crearán bajo `src/modules/<nombre>` siguiendo la plantilla `health`.
 
@@ -19,12 +19,12 @@ Actores: **Turista** (visitante sin registro u opcionalmente autenticado), **Com
 | Módulo (`src/modules/`) | Responsabilidad                                                                  | RF            |
 | ----------------------- | -------------------------------------------------------------------------------- | ------------- |
 | `auth`                  | Registro/login de turista (opcional) y comerciante, JWT, expiración de sesión    | RF-02, 15, 16 |
-| `turistas`              | Perfil, historial de itinerarios, sincronización localStorage → nube             | RF-03, 04     |
-| `comercios`             | Perfil cultural, horarios, coordenadas, QR del local, analíticas                 | RF-17, 18, 21 |
-| `itinerarios`           | Parámetros del recorrido, generación de rutas, edición, eliminación, reemplazo   | RF-05 a 10    |
-| `promociones`           | Cupones: crear, pausar, límite diario, obtener y redimir                         | RF-13, 19, 20 |
+| `tourists`              | Perfil, historial de itinerarios, sincronización localStorage → nube             | RF-03, 04     |
+| `merchants`             | Perfil cultural, horarios, coordenadas, QR del local, analíticas                 | RF-17, 18, 21 |
+| `itineraries`           | Parámetros del recorrido, generación de rutas, edición, eliminación, reemplazo   | RF-05 a 10    |
+| `promotions`           | Cupones: crear, pausar, límite diario, obtener y redimir                         | RF-13, 19, 20 |
 | `checkins`              | Check-in por QR + GPS (≤ 50 m) y calificación 1–5 opcional                       | RF-12, 14     |
-| `motor-ia`              | Búsqueda por proximidad, TSP, redistribución por afluencia, equidad de comercios | RF-22 a 25    |
+| `ai-engine`              | Búsqueda por proximidad, TSP, redistribución por afluencia, equidad de comercios | RF-22 a 25    |
 
 ### Reglas de negocio que el código debe respetar
 
@@ -72,12 +72,12 @@ src/
 
 ## Convenciones
 
-- Archivos: `kebab-case` con sufijo de rol (`comercios.service.ts`, `app-error.ts`). Clases/tipos `PascalCase`; variables y funciones `camelCase`; constantes de entorno `UPPER_SNAKE_CASE`.
-- Idioma: los **términos de dominio en español** (`comercios`, `itinerarios`, `paradas`), los sufijos técnicos y el código en inglés. Campos JSON de la API en `camelCase`. Mensajes de error al cliente en español.
+- Archivos: `kebab-case` con sufijo de rol (`merchants.service.ts`, `app-error.ts`). Clases/tipos `PascalCase`; variables y funciones `camelCase`; constantes de entorno `UPPER_SNAKE_CASE`.
+- Idioma: **carpetas, archivos, identificadores y rutas de la API en inglés** (`src/modules/merchants/`, `createMerchant`). Los **comentarios, documentación, mensajes de error al cliente y textos visuales pueden ir en español**. Campos JSON de la API en `camelCase` y en inglés (`name`, `createdAt`).
 - Capas: `routes → controller → service`. El controller **no** contiene lógica de negocio; el service **no** conoce `req`/`res`. Cuando exista MongoDB, el acceso a datos va detrás del service (capa repositorio/modelo), nunca en el controller.
 - TypeScript: prohibido `any` (usa `unknown`), prefiere inferencia cuando el tipo es obvio, `import type` para tipos, `async/await` (sin callbacks). Sin `console.*`: usa `common/utils/logger`.
 - Variables de entorno: **solo** se leen desde `config/env.ts` (validadas con Zod). Toda variable nueva se añade ahí **y** en `.env.example`. Nunca `process.env` suelto ni secretos en el código.
-- Rutas: prefijo `API_PREFIX` (por defecto `/api/v1`), recursos en plural y minúsculas (`/comercios/:id/promociones`). Verbos HTTP correctos y códigos de estado precisos (201 al crear, 204 al borrar, 400/401/403/404/409 según el caso).
+- Rutas: prefijo `API_PREFIX` (por defecto `/api/v1`), recursos en plural y minúsculas (`/merchants/:id/promotions`). Verbos HTTP correctos y códigos de estado precisos (201 al crear, 204 al borrar, 400/401/403/404/409 según el caso).
 - Formato de respuesta **siempre** uniforme:
   - Éxito: `{ "success": true, "data": ... }` (usa `sendSuccess`).
   - Error: `{ "success": false, "error": { "code", "message", "details?" } }`. Lanza `AppError` (`AppError.notFound()`, etc.); el `errorHandler` global lo formatea. No respondas errores a mano en los controllers.
