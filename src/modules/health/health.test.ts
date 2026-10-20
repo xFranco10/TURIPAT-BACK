@@ -19,4 +19,11 @@ describe('GET /api/v1/health', () => {
     expect(res.status).toBe(404);
     expect(res.body).toMatchObject({ success: false, error: { code: 'NOT_FOUND' } });
   });
+
+  it('informa el estado de la base de datos aunque no haya conexión establecida', async () => {
+    const res = await request(app).get('/api/v1/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.db).toBe('disconnected');
+  });
 });
