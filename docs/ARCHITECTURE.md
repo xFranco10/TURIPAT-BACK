@@ -47,14 +47,8 @@ TURIPAT-BACK/
    │  ├─ utils/              # logger · response
    │  └─ types/
    └─ modules/
-      ├─ health/             # módulo de referencia (implementado)
-      ├─ auth/               # reservado
-      ├─ turistas/           # reservado
-      ├─ comercios/          # reservado
-      ├─ itinerarios/        # reservado
-      ├─ promociones/        # reservado
-      ├─ checkins/           # reservado
-      └─ motor-ia/           # reservado
+      └─ health/             # módulo de referencia (implementado); los módulos de dominio
+                             # se añadirán aquí como modules/<nombre>/ copiando la plantilla health
 ```
 
 ## 3. Responsabilidad de cada archivo de un módulo

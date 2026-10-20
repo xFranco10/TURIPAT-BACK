@@ -12,7 +12,7 @@ Actores: **Turista** (visitante sin registro u opcionalmente autenticado), **Com
 
 - Esqueleto inicial. **Sin base de datos y sin datos mock.** Solo existe el módulo de referencia `health`.
 - Base de datos futura: **MongoDB** (con Mongoose). No instales ni conectes nada de BD hasta que se pida.
-- Los módulos de dominio (carpetas con `.gitkeep`) están reservados pero vacíos.
+- Los módulos de dominio aún no existen como carpetas; se crearán bajo `src/modules/<nombre>` siguiendo la plantilla `health`.
 
 ### Mapa de módulos → requisitos funcionales
 
@@ -90,7 +90,7 @@ Cada endpoint nuevo **debe** llevar su bloque `@openapi` en el `*.routes.ts` del
 
 ## Flujo para añadir un módulo o endpoint
 
-1. Copia la estructura de `src/modules/health/` (o rellena la carpeta reservada y borra su `.gitkeep`).
+1. Copia la estructura de `src/modules/health/` a `src/modules/<modulo>/` y adapta el contenido.
 2. Define `model` y `schema` (Zod) → `service` → `controller` → `routes` (con `@openapi` y `validate`).
 3. Registra el router en `src/routes.ts` y el tag en `config/swagger.ts`.
 4. Escribe tests en `<modulo>.test.ts` (Supertest sobre `createApp()`; cubre éxito, validación 400 y no encontrado).
