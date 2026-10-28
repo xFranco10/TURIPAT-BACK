@@ -14,6 +14,7 @@ const envSchema = z.object({
         .map((origin) => origin.trim())
         .filter(Boolean),
     ),
+  MONGODB_URI: z.string().startsWith('mongodb'),
 });
 
 const parsed = envSchema.safeParse(process.env);
