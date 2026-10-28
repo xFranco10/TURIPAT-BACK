@@ -16,10 +16,12 @@ Cliente (PWA Angular)
                                                         <modulo>.controller
                                                               │
                                                               ▼
-                                                        <modulo>.service ──► (futuro) MongoDB
+                                                        <modulo>.service ──► getCollection<T>() ──► MongoDB
       ▲
       └── notFoundHandler ─► errorHandler (formato de error uniforme)
 ```
+
+El acceso a datos usa el **driver nativo** a través de `getCollection<T>()`; no hay modelos Mongoose. El esquema vive en Mongo como `$jsonSchema` (`src/database/schema/`) y la entrada se valida con Zod en el borde.
 
 ## 2. Árbol de carpetas
 
@@ -40,15 +42,29 @@ TURIPAT-BACK/
    ├─ routes.ts              # monta los routers de cada módulo bajo API_PREFIX
    ├─ config/
    │  ├─ env.ts              # variables de entorno validadas con Zod
+   │  ├─ database.ts         # conexión, desconexión y estado de Mongo
    │  └─ swagger.ts          # definición OpenAPI + búsqueda de anotaciones
    ├─ common/
+   │  ├─ db/collection.ts    # getCollection<T>(): acceso tipado al driver nativo
    │  ├─ errors/app-error.ts
-   │  ├─ middlewares/        # validate · not-found · error-handler
+   │  ├─ middlewares/        # validate · not-found · error-handler · authorize
    │  ├─ utils/              # logger · response
-   │  └─ types/
+   │  └─ types/              # auth.ts · express.d.ts (req.user)
+   ├─ database/
+   │  ├─ schema/             # 12 colecciones: validador $jsonSchema + índices
+   │  ├─ setup.ts            # npm run db:setup  (idempotente: collMod + createIndex)
+   │  └─ verify.ts           # npm run db:verify (compara la base real con la definición)
    └─ modules/
-      └─ health/             # módulo de referencia (implementado); los módulos de dominio
-                             # se añadirán aquí como modules/<nombre>/ copiando la plantilla health
+      ├─ health/             # módulo de referencia (implementado)
+      ├─ example/            # plantilla didáctica de CRUD (implementada)
+      ├─ auth/               # carpetas reservadas: se pueblan desde health
+      ├─ catalog/            # al arrancar la primera historia de cada módulo
+      ├─ places/
+      ├─ itineraries/
+      │  └─ engine/          # motor: sin router ni colecciones propias
+      ├─ checkins/
+      ├─ promotions/
+      └─ analytics/
 ```
 
 ## 3. Responsabilidad de cada archivo de un módulo
@@ -58,7 +74,7 @@ TURIPAT-BACK/
 | `<modulo>.routes.ts`     | Declara rutas, anotaciones `@openapi`, aplica `validate()` y middlewares de auth | Lógica de negocio               |
 | `<modulo>.controller.ts` | Extrae datos de `req`, llama al service, responde con `sendSuccess`              | Reglas de negocio, acceso a BD  |
 | `<modulo>.service.ts`    | Reglas de negocio, orquestación, lanza `AppError`                                | Conocer `req`/`res`             |
-| `<modulo>.model.ts`      | Tipos del dominio; con MongoDB será el esquema/modelo Mongoose                   | Lógica de negocio               |
+| `<modulo>.model.ts`      | Interfaces del dominio y tipos compartidos del módulo (sin `_id`, que lo añade `Stored<T>`) | Definir el esquema de la BD ni el modelo Mongoose |
 | `<modulo>.schema.ts`     | Esquemas Zod de entrada y tipos inferidos                                        | Validar a mano en el controller |
 | `<modulo>.test.ts`       | Tests de integración con Supertest sobre `createApp()` y unitarios del service   | Depender de servicios externos  |
 
@@ -91,6 +107,7 @@ TURIPAT-BACK/
 | `AppError.forbidden`                   | 403    | `FORBIDDEN`                                       |
 | `AppError.notFound` / ruta inexistente | 404    | `NOT_FOUND`                                       |
 | `AppError.conflict`                    | 409    | `CONFLICT`                                        |
+| `AppError.serviceUnavailable`          | 503    | `SERVICE_UNAVAILABLE` (Mongo sin conexión)         |
 | Error no controlado                    | 500    | `INTERNAL_ERROR` (mensaje genérico en producción) |
 
 ## 5. Swagger / OpenAPI
@@ -102,17 +119,17 @@ TURIPAT-BACK/
 ```ts
 /**
  * @openapi
- * /merchants/{id}:
+ * /places/{id}:
  *   get:
- *     tags: [Merchants]
- *     summary: Obtiene un comercio por id
+ *     tags: [Places]
+ *     summary: Obtiene un lugar por id
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema: { type: string }
  *     responses:
- *       200: { description: Comercio encontrado }
+ *       200: { description: Lugar encontrado }
  *       404:
  *         description: No encontrado
  *         content:
@@ -125,23 +142,30 @@ TURIPAT-BACK/
 
 - Tests junto al código (`*.test.ts`), ejecutados con Vitest.
 - Integración: `request(createApp()).get(...)` con Supertest, sin levantar puerto.
-- Cuando exista MongoDB: usar una BD aislada para tests (p. ej. `mongodb-memory-server`) y nunca la de desarrollo.
+- Los tests actuales **no tocan MongoDB**: el esquema se prueba sobre la definición (`database/schema/*.test.ts`) y las rutas sobre `createApp()`. Un endpoint que consulte la base se prueba con una base aislada (`mongodb-memory-server`, **pendiente de instalar**) o contra una base de test dedicada; **nunca** la de desarrollo.
 
-## 7. Hoja de ruta prevista (no implementada)
+## 7. Estado de la implementación
 
-1. Conexión a MongoDB con Mongoose (`config/database.ts`) y modelos por módulo; índice `2dsphere` en la ubicación de los comercios.
-2. `auth`: registro/login con bcrypt + JWT, middleware `authenticate` y `authorize(roles)` en `common/middlewares/`.
-3. `merchants` (con validación de NIT módulo 11, QR) y `promotions`.
-4. `itineraries` + `ai-engine` (TSP asíncrono, equidad de comercios, afluencia).
-5. `checkins` y analíticas anónimas.
+**Hecho**
+
+1. Conexión a MongoDB (`config/database.ts`), esquema declarativo de las 12 colecciones con `$jsonSchema` e índices (`database/schema/`), `npm run db:setup` y `npm run db:verify`.
+2. Acceso a datos tipado (`common/db/collection.ts`), `authorize(roles)` y `req.user` tipado (`common/types/`).
+3. Módulos `health` (referencia) y `example` (didáctico).
+
+**Pendiente** — orden en `context/agente/doc-contrato-api.md` §13
+
+1. `authenticate` (JWT) y `auth`.
+2. `places`: `GET /places` y `GET /places/:id` (rebanada vertical de S0).
+3. `catalog`, `itineraries` + `engine`, `checkins`, `promotions`, `analytics`.
 
 ## 8. Decisiones tomadas
 
 | Decisión                           | Motivo                                                                        |
 | ---------------------------------- | ----------------------------------------------------------------------------- |
-| Módulos de dominio                 | Escala mejor con 25 RF agrupados por actor/área                               |
+| Módulos de dominio                 | Escala mejor con 26 RF agrupados por actor/área                               |
 | CommonJS (`module: node16`)        | Sin fricción de extensiones `.js` en imports; compatible con Express/Mongoose |
 | Express 5                          | Manejo nativo de errores async                                                |
 | Zod + swagger-jsdoc                | Validación tipada y documentación junto a las rutas, enfoque común en Express |
 | `createApp()` separado de `server` | Permite probar la app sin abrir un puerto                                     |
-| Sin mock ni BD por ahora           | Pedido explícito: esqueleto inicial; la BD será MongoDB                       |
+| Driver nativo (`getCollection<T>()`) | El esquema ya vive en Mongo como `$jsonSchema` y Zod valida en el borde; un modelo Mongoose sería una tercera definición que puede divergir |
+| `$jsonSchema` declarativo          | Una sola definición del esquema, versionada y verificable con `db:verify`     |

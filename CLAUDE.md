@@ -10,21 +10,24 @@ Actores: **Turista** (visitante sin registro u opcionalmente autenticado), **Com
 
 ### Estado actual
 
-- Esqueleto inicial. **Sin base de datos y sin datos mock.** Solo existen `health` (referencia) y `example` (plantilla didáctica de CRUD con validación, errores y tests; puede borrarse al empezar los módulos reales).
-- Base de datos futura: **MongoDB** (con Mongoose). No instales ni conectes nada de BD hasta que se pida.
-- Los módulos de dominio aún no existen como carpetas; se crearán bajo `src/modules/<nombre>` siguiendo la plantilla `health`.
+- **MongoDB está integrada** (`config/database.ts`; exige `MONGODB_URI` en `.env`). El esquema se aplica con `npm run db:setup`: 12 colecciones definidas como `$jsonSchema` en `src/database/schema/`, cada una con sus índices. `npm run db:verify` comprueba que la base real coincide con la definición. **Sin datos mock ni seeds.**
+- **Acceso a datos con el driver nativo, sin modelos Mongoose.** Los services leen y escriben con `getCollection<T>()` de `src/common/db/collection.ts`; `*.model.ts` solo declara las interfaces del dominio. El esquema ya está validado en Mongo (`$jsonSchema`) y en el borde (Zod), así que un modelo sería una tercera definición del mismo esquema.
+- Solo `health` (referencia) y `example` (plantilla didáctica de CRUD con validación, errores y tests; puede borrarse al empezar los módulos reales) tienen código. Las **8 carpetas de dominio ya existen** en `src/modules/` con un `.gitkeep`; cada una se puebla copiando la plantilla `health` cuando arranca su primera historia. **No se crean archivos vacíos** (`*.routes.ts` sin rutas, `*.service.ts` sin lógica): la carpeta espera vacía hasta que haya código real.
 
 ### Mapa de módulos → requisitos funcionales
 
-| Módulo (`src/modules/`) | Responsabilidad                                                                  | RF            |
-| ----------------------- | -------------------------------------------------------------------------------- | ------------- |
-| `auth`                  | Registro/login de turista (opcional) y comerciante, JWT, expiración de sesión    | RF-02, 15, 16 |
-| `tourists`              | Perfil, historial de itinerarios, sincronización localStorage → nube             | RF-03, 04     |
-| `merchants`             | Perfil cultural, horarios, coordenadas, QR del local, analíticas                 | RF-17, 18, 21 |
-| `itineraries`           | Parámetros del recorrido, generación de rutas, edición, eliminación, reemplazo   | RF-05 a 10    |
-| `promotions`           | Cupones: crear, pausar, límite diario, obtener y redimir                         | RF-13, 19, 20 |
-| `checkins`              | Check-in por QR + GPS (≤ 50 m) y calificación 1–5 opcional                       | RF-12, 14     |
-| `ai-engine`              | Búsqueda por proximidad, TSP, redistribución por afluencia, equidad de comercios | RF-22 a 25    |
+Cada módulo es **dueño único** de sus colecciones (detalle y reglas de frontera en `context/agente/plan-modulos.md` §4).
+
+| Módulo (`src/modules/`) | Responsabilidad                                                             | Colecciones                | RF                 |
+| ----------------------- | --------------------------------------------------------------------------- | -------------------------- | ------------------ |
+| `auth`                  | Registro/login de turista y comercio, JWT, sesiones, perfil y preferencias   | `accounts`, `sessions`     | 02, 03, 15, 16, RNF-07 |
+| `catalog`               | Categorías de lugares y sitios patrimoniales (solo el admin escribe)         | `categories`               | 05, 17, 26         |
+| `places`                | Lugares: búsqueda por proximidad, ficha, fotos, QR y estado                  | `places`                   | 11, 17, 18, 22, 26 |
+| `itineraries`           | Rutas: generación, edición, reemplazo y sincronización                       | `itineraries`              | 01, 03–07, 09, 10  |
+| `itineraries/engine/`   | Motor: proximidad, TSP, equidad y afluencia. **Sin router ni colecciones**   | —                          | 08, 22–25          |
+| `checkins`              | Check-in por QR + GPS, afluencia anónima y calificaciones                    | `checkins`, `affluencePings`, `ratings` | 12, 14, 24, 25 |
+| `promotions`            | Promociones y cupones: crear, pausar, reclamar y canjear                     | `promotions`, `coupons`, `promotionCounters` | 13, 19, 20 |
+| `analytics`             | Métricas diarias y panel del comercio (único escritor de `dailyMetrics`)     | `dailyMetrics`             | 21                 |
 
 ### Reglas de negocio que el código debe respetar
 
@@ -33,7 +36,7 @@ Actores: **Turista** (visitante sin registro u opcionalmente autenticado), **Com
 - Mínimo **2 alternativas** de ruta sugerida. Solo comercios abiertos dentro de la ventana elegida.
 - La optimización TSP se ejecuta **solo cuando el usuario la pide** (botón); reordenar a mano nunca re-optimiza (RF-08).
 - NIT del comerciante: validar **dígito de verificación (módulo 11)** en el backend (RF-15).
-- Check-in válido solo a **≤ 50 m** del local (RF-12). Cupones: estado `Redimido` inmediato y no reutilizable; al llegar al límite diario se ocultan hasta el día siguiente (RF-19/20).
+- Check-in válido solo a **≤ 50 m** del local (RF-12). Cupones: estado `redeemed` inmediato y no reutilizable; al llegar al límite diario se ocultan hasta el día siguiente (RF-19/20).
 - Analíticas **anónimas y consolidadas**: jamás exponer nombres/correos de turistas (RF-21).
 - Consultas de cercanía con **índices geoespaciales de MongoDB** (`2dsphere`) (RF-22, RNF-01). El TSP debe ser **asíncrono**, sin bloquear el event loop (RNF-02).
 - Sesiones con JWT y cierre automático por inactividad (RNF-07). Privacidad de geolocalización conforme a Ley 1581.
@@ -53,17 +56,19 @@ src/
 ├─ server.ts            # arranque, listen y cierre ordenado (único archivo con side effects de red)
 ├─ app.ts               # createApp(): middlewares globales, swagger, rutas, errores (testeable)
 ├─ routes.ts            # registra el router de cada módulo
-├─ config/              # env.ts (Zod), swagger.ts
+├─ config/              # env.ts (Zod), database.ts (conexión), swagger.ts
 ├─ common/              # código transversal reutilizable
+│  ├─ db/               # getCollection<T>(): acceso tipado a Mongo
 │  ├─ errors/           # AppError
-│  ├─ middlewares/      # validate, not-found, error-handler (+ futuros: auth, roles)
+│  ├─ middlewares/      # validate, not-found, error-handler, authorize (+ authenticate en H2.6)
 │  ├─ utils/            # logger, response
-│  └─ types/            # tipos compartidos
+│  └─ types/            # tipos compartidos (auth.ts, express.d.ts)
+├─ database/            # esquema: 12 colecciones $jsonSchema + setup.ts / verify.ts
 └─ modules/<modulo>/
    ├─ <modulo>.routes.ts      # rutas + anotaciones @openapi + validate()
    ├─ <modulo>.controller.ts  # HTTP: lee req, llama al service, responde con sendSuccess
    ├─ <modulo>.service.ts     # lógica de negocio, sin tocar req/res
-   ├─ <modulo>.model.ts       # interfaces/tipos del dominio (en el futuro: esquema Mongoose)
+   ├─ <modulo>.model.ts       # interfaces del dominio (NO es un modelo Mongoose)
    ├─ <modulo>.schema.ts      # esquemas Zod de entrada (body/params/query) y sus tipos inferidos
    └─ <modulo>.test.ts        # tests del módulo (junto al código)
 ```
@@ -72,12 +77,12 @@ src/
 
 ## Convenciones
 
-- Archivos: `kebab-case` con sufijo de rol (`merchants.service.ts`, `app-error.ts`). Clases/tipos `PascalCase`; variables y funciones `camelCase`; constantes de entorno `UPPER_SNAKE_CASE`.
-- Idioma: **carpetas, archivos, identificadores y rutas de la API en inglés** (`src/modules/merchants/`, `createMerchant`). Los **comentarios, documentación, mensajes de error al cliente y textos visuales pueden ir en español**. Campos JSON de la API en `camelCase` y en inglés (`name`, `createdAt`).
-- Capas: `routes → controller → service`. El controller **no** contiene lógica de negocio; el service **no** conoce `req`/`res`. Cuando exista MongoDB, el acceso a datos va detrás del service (capa repositorio/modelo), nunca en el controller.
+- Archivos: `kebab-case` con sufijo de rol (`places.service.ts`, `app-error.ts`). Clases/tipos `PascalCase`; variables y funciones `camelCase`; constantes de entorno `UPPER_SNAKE_CASE`.
+- Idioma: **carpetas, archivos, identificadores y rutas de la API en inglés** (`src/modules/places/`, `createPlace`). Los **comentarios, documentación, mensajes de error al cliente y textos visuales pueden ir en español**. Campos JSON de la API en `camelCase` y en inglés (`name`, `createdAt`).
+- Capas: `routes → controller → service`. El controller **no** contiene lógica de negocio; el service **no** conoce `req`/`res`. El acceso a datos va siempre dentro del service con `getCollection<T>()` (`src/common/db/collection.ts`), nunca en el controller y nunca con `mongoose.connection` suelto.
 - TypeScript: prohibido `any` (usa `unknown`), prefiere inferencia cuando el tipo es obvio, `import type` para tipos, `async/await` (sin callbacks). Sin `console.*`: usa `common/utils/logger`.
 - Variables de entorno: **solo** se leen desde `config/env.ts` (validadas con Zod). Toda variable nueva se añade ahí **y** en `.env.example`. Nunca `process.env` suelto ni secretos en el código.
-- Rutas: prefijo `API_PREFIX` (por defecto `/api/v1`), recursos en plural y minúsculas (`/merchants/:id/promotions`). Verbos HTTP correctos y códigos de estado precisos (201 al crear, 204 al borrar, 400/401/403/404/409 según el caso).
+- Rutas: prefijo `API_PREFIX` (por defecto `/api/v1`), recursos en plural y minúsculas (`/places/:id/promotions`). Verbos HTTP correctos y códigos de estado precisos (201 al crear, 204 al borrar, 400/401/403/404/409 según el caso).
 - Formato de respuesta **siempre** uniforme:
   - Éxito: `{ "success": true, "data": ... }` (usa `sendSuccess`).
   - Error: `{ "success": false, "error": { "code", "message", "details?" } }`. Lanza `AppError` (`AppError.notFound()`, etc.); el `errorHandler` global lo formatea. No respondas errores a mano en los controllers.
@@ -110,8 +115,9 @@ Cada endpoint nuevo **debe** llevar su bloque `@openapi` en el `*.routes.ts` del
 
 ## Qué NO hacer
 
-- No añadir datos mock, seeds ni conexión a BD sin que se pida explícitamente.
-- No introducir otro framework (NestJS, Fastify…), ORM distinto de Mongoose, ni cambiar a ESM sin consultarlo.
+- No añadir datos mock ni seeds sin que se pida explícitamente. La conexión a MongoDB ya existe; si cambias el esquema, corre `npm run db:setup` y `npm run db:verify`.
+- No introducir modelos Mongoose: el esquema vive en `src/database/schema/` y el acceso a datos en `getCollection<T>()`.
+- No introducir otro framework (NestJS, Fastify…) ni cambiar a ESM sin consultarlo.
 - No poner lógica de negocio en routes/controllers ni acceso a `req`/`res` en services.
 - No hacer commits ni push salvo petición expresa. No subir `.env`.
 - No dejar endpoints sin Swagger ni sin tests.
