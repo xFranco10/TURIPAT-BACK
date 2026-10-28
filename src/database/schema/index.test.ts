@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collections } from './index';
+import { collections, collectionSpecs } from './index';
 
 const EXPECTED_COLLECTIONS = [
   'accounts',
@@ -25,6 +25,12 @@ describe('definición de colecciones', () => {
     expect(names).toHaveLength(12);
     expect(new Set(names).size).toBe(12);
     expect([...names].sort()).toEqual([...EXPECTED_COLLECTIONS].sort());
+  });
+
+  it('la clave de collectionSpecs coincide con el name de cada spec', () => {
+    for (const [key, spec] of Object.entries(collectionSpecs)) {
+      expect(key).toBe(spec.name);
+    }
   });
 
   it('toda colección trae validador $jsonSchema con bsonType object y required', () => {

@@ -19,6 +19,14 @@ export const swaggerSpec = swaggerJsdoc({
     servers: [{ url: env.API_PREFIX, description: 'API base' }],
     tags: [
       { name: 'Health', description: 'Estado del servicio' },
+      { name: 'Auth', description: 'Registro, login, sesiones y preferencias' },
+      { name: 'Catalog', description: 'Categorías de lugares y sitios patrimoniales' },
+      { name: 'Places', description: 'Lugares: búsqueda, ficha, fotos y QR' },
+      { name: 'Itineraries', description: 'Rutas sugeridas, edición y optimización' },
+      { name: 'Checkins', description: 'Check-in por QR y afluencia agregada' },
+      { name: 'Ratings', description: 'Calificaciones de lugares (parte del módulo checkins)' },
+      { name: 'Promotions', description: 'Promociones y cupones' },
+      { name: 'Analytics', description: 'Métricas agregadas del comercio' },
       { name: 'Examples', description: 'Módulo didáctico de referencia para crear nuevos endpoints' },
     ],
     components: {

@@ -34,7 +34,7 @@ export const promotions: CollectionSpec = {
           total: nullable(integer({ minimum: 1 })),
         },
       }),
-      status: { enum: ['draft', 'active', 'pausada', 'finished'] },
+      status: { enum: ['draft', 'active', 'paused', 'finished'] },
       imageUrl: nullable(string({ maxLength: 2048 })),
     },
   }),

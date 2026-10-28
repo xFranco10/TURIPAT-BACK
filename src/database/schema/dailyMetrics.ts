@@ -20,10 +20,10 @@ export const dailyMetrics: CollectionSpec = {
       couponsIssued: integer({ minimum: 0 }),
       couponsRedeemed: integer({ minimum: 0 }),
       ratings: object({
-        required: ['n', 'suma'],
+        required: ['n', 'sum'],
         properties: {
           n: integer({ minimum: 0 }),
-          suma: integer({ minimum: 0 }),
+          sum: integer({ minimum: 0 }),
           promedio: decimal({ minimum: 0, maximum: 5 }),
         },
       }),

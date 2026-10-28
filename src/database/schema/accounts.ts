@@ -32,7 +32,7 @@ export const accounts: CollectionSpec = {
         object({
           properties: {
             interests: array(objectId()),
-            idioma: string({ maxLength: 10 }),
+            language: string({ maxLength: 10 }),
             notifications: boolean(),
           },
         }),
